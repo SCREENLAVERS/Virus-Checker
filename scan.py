@@ -1,52 +1,77 @@
 import requests
-import hashlib
+import base64
+import os
+import time
 
-# Ganti dengan API Key VirusTotal Anda
-API_KEY = "YOUR_API_KEY"
+API_KEY = "fab27c09657c8ee5e2229b788625106a27e2ec37eac7791d8bd8d633df96fd58"
 
-def scan_url(url):
-    """Mengecek status keamanan dari URL."""
-    vt_url = "https://www.virustotal.com/api/v3/urls"
-    headers = {
-        "x-apikey": API_KEY,
-        "accept": "application/json"
-    }
-
-    # Encode URL ke dalam hash yang diperlukan oleh VirusTotal
-    url_id = hashlib.sha256(url.encode()).hexdigest()
-    response = requests.get(f"{vt_url}/{url_id}", headers=headers)
-
-    if response.status_code == 200:
-        result = response.json()
-        print("Hasil Pemindaian URL:")
-        print(result)
-    else:
-        print("Gagal memeriksa URL:", response.status_code, response.text)
+def install_requirements():
+    try:
+        import requests
+        print("[*] Semua komponen sudah diinstal.")
+    except ImportError:
+        print("[*] Menginstal komponen yang diperlukan...")
+        os.system("pip install requests")
+    print("\n[*] Semua dependensi telah diinstal.")
+    
+    # Hitungan mundur dari 5 sampai 1
+    for i in range(5, 0, -1):
+        print(f"[!] Kembali ke menu utama dalam {i} detik...", end="\r")
+        time.sleep(1)
+    print(" " * 50)  # Kosongkan garis untuk tampilan rapi
 
 def scan_file(file_path):
-    """Mengecek status keamanan dari file."""
-    vt_url = "https://www.virustotal.com/api/v3/files"
-    headers = {
-        "x-apikey": API_KEY,
-    }
+    if not os.path.isfile(file_path):
+        print(f"[!] File tidak ditemukan di jalur: {file_path}")
+        return
+    try:
+        with open(file_path, "rb") as file:
+            files = {"file": file}
+            headers = {"x-apikey": API_KEY}
+            response = requests.post("https://www.virustotal.com/api/v3/files", headers=headers, files=files)
+            if response.status_code == 200:
+                print("Hasil Scan:")
+                print(response.json())
+            else:
+                print(f"Gagal memindai file: {response.status_code} {response.json()}")
+    except Exception as e:
+        print(f"[!] Kesalahan: {str(e)}")
+
+def scan_url(url):
+    try:
+        url_id = base64.urlsafe_b64encode(url.encode()).decode().strip("=")
+        headers = {"x-apikey": API_KEY}
+        response = requests.get(f"https://www.virustotal.com/api/v3/urls/{url_id}", headers=headers)
+        if response.status_code == 200:
+            print("Hasil Scan URL:")
+            print(response.json())
+        else:
+            print(f"Gagal memeriksa URL: {response.status_code} {response.json()}")
+    except Exception as e:
+        print(f"[!] Kesalahan: {str(e)}")
+
+def main_menu():
+    print("\nMenu:")
+    print("[1] Install Komponen yang Diperlukan")
+    print("[2] Scan File dari Direktori")
+    print("[3] Scan URL")
+    print("[4] Keluar")
     
-    with open(file_path, "rb") as file:
-        files = {"file": (file_path, file)}
-        response = requests.post(vt_url, headers=headers, files=files)
-
-    if response.status_code == 200:
-        result = response.json()
-        print("Hasil Pemindaian File:")
-        print(result)
+    choice = input("Pilih opsi (1/2/3/4): ")
+    if choice == "1":
+        install_requirements()
+        main_menu()  # Kembali ke menu utama setelah instalasi
+    elif choice == "2":
+        file_path = input("Masukkan path lengkap file: ")
+        scan_file(file_path)
+    elif choice == "3":
+        url = input("Masukkan URL: ")
+        scan_url(url)
+    elif choice == "4":
+        print("Keluar...")
     else:
-        print("Gagal memeriksa file:", response.status_code, response.text)
+        print("[!] Pilihan tidak valid.")
+        main_menu()
 
-# Contoh Penggunaan
-url_to_check = "https://example.com"
-file_to_check = "path/to/your/file.exe"
-
-# Cek URL
-scan_url(url_to_check)
-
-# Cek File
-scan_file(file_to_check)
+if __name__ == "__main__":
+    main_menu()
